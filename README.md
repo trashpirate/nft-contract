@@ -96,27 +96,29 @@ Run test with bsc mainnet fork:
     forge test
     ```
 
-#### Deploy to BSC testnet
+#### Deploy to testnet
 
 1. Create test wallet using keystore. Enter private key of test wallet when prompted.
     ```sh
-    cast wallet import Testing --interactive
+    cast wallet import <KeystoreName> --interactive
     ```
-    
-2. Deploy to BSC testnet
+    Update the Makefile accordingly.
+
+2. Deploy to testnet
     ```sh
-    make deploy ARGS=\"--network bsctest\"
+    make deploy-testnet
     ```
 
-#### Deploy to BSC mainnet
+#### Deploy to mainnet
 1. Create deployer wallet using keystore. Enter private key of deployer wallet when prompted.
     ```sh
     cast wallet import <KeystoreName> --interactive
     ```
-    
-2. Deploy to BSC mainnet
+    Update the Makefile accordingly.
+
+2. Deploy to mainnet
     ```sh
-    make deploy ARGS=\"--network bscmain\"
+    make deploy-mainnet
     ```
 
 <!-- CONTRIBUTING -->
@@ -144,9 +146,6 @@ Distributed under the MIT License. See `LICENSE` for more information.
 
 Nadina Oates - [@N0_crypto](https://twitter.com/N0_crypto)
 
-Main Repository: [https://github.com/trashpirate/NFTContract](https://github.com/trashpirate/NFTContract)
-
-Project Link: [https://NFTContract.buyholdearn.com](https://NFTContract.buyholdearn.com)
 
 
 <!-- ACKNOWLEDGMENTS -->

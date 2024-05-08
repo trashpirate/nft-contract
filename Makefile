@@ -51,15 +51,15 @@ deploy-local:
 	@forge script script/deployment/DeployNFTContract.s.sol:DeployNFTContract --rpc-url localhost --private-key ${DEFAULT_ANVIL_KEY} --sender 0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266 --broadcast 
 
 deploy-testnet: 
-	@forge script script/deployment/DeployNFTContract.s.sol:DeployNFTContract --rpc-url $(RPC_ETH_SEPOLIA) --account <account name> --sender <account address> --broadcast --verify --etherscan-api-key sepoliascan
+	@forge script script/deployment/DeployNFTContract.s.sol:DeployNFTContract --rpc-url $(RPC_ETH_SEPOLIA) --account <account name> --sender <KeystoreName> --broadcast --verify --etherscan-api-key sepoliascan
 
 deploy-mainnet: 
-	@forge script script/deployment/DeployNFTContract.s.sol:DeployNFTContract --rpc-url $(RPC_ETH_MAIN) --account <account name> --sender <account address> --broadcast --verify --etherscan-api-key etherscan
+	@forge script script/deployment/DeployNFTContract.s.sol:DeployNFTContract --rpc-url $(RPC_ETH_MAIN) --account <account name> --sender <KeystoreName> --broadcast --verify --etherscan-api-key etherscan
 
 
 # interaction
 mint-testnet:
-	@forge script script/interactions/Interactions.s.sol:MintNft --rpc-url $(RPC_ETH_SEPOLIA) --account <account name> --sender <account address> --broadcast
+	@forge script script/interactions/Interactions.s.sol:MintNft --rpc-url $(RPC_ETH_SEPOLIA) --account <account name> --sender <KeystoreName> --broadcast
 
 
 # security
