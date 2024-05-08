@@ -42,7 +42,7 @@
 
 Smart contract inheriting from ERC721A with a native and ERC20 token fee for minting including full deployment/testing suite using Foundry.
 
-### Smart Contracts on BSC Testnet
+### Smart Contracts Testnet
 
 **Payment Token Contract**  
 
