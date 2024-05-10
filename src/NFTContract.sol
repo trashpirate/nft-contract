@@ -134,42 +134,46 @@ contract NFTContract is ERC721A, ERC2981, ERC721ABurnable, Ownable {
     /// @param quantity number of NFTs to mint
     function mint(uint256 quantity) external payable {
         if (s_paused) revert NFTContract_ContractIsPaused();
-
         if (quantity == 0) revert NFTContract_InsufficientMintQuantity();
         if (quantity > s_batchLimit) revert NFTContract_ExceedsBatchLimit();
-        if (s_counter[s_currentSet] + quantity > s_maxSupply[s_currentSet]) {
+
+        uint256 currentSet = s_currentSet;
+        if ((s_counter[currentSet] + quantity) > s_maxSupply[currentSet]) {
             revert NFTContract_ExceedsMaxSupply();
         }
 
+        _mint(msg.sender, quantity);
+
+        uint256 tokenId = _nextTokenId();
+        for (uint256 i = 0; i < quantity; i++) {
+            _setTokenURI(tokenId, currentSet);
+            unchecked {
+                tokenId++;
+            }
+        }
+
         if (s_tokenFee > 0) {
-            if (i_paymentToken.balanceOf(msg.sender) < s_tokenFee * quantity) {
+            uint256 tokenFee = s_tokenFee * quantity;
+            if (i_paymentToken.balanceOf(msg.sender) < tokenFee) {
                 revert NFTContract_InsufficientTokenBalance();
             }
             bool success = i_paymentToken.transferFrom(
                 msg.sender,
                 s_feeAddress,
-                s_tokenFee * quantity
+                tokenFee
             );
             if (!success) revert NFTContract_TokenTransferFailed();
         }
 
         if (s_ethFee > 0) {
-            if (msg.value < s_ethFee * quantity) {
-                revert NFTContract_InsufficientEthFee(msg.value, s_ethFee);
+            uint256 ethFee = s_ethFee * quantity;
+            if (msg.value < ethFee) {
+                revert NFTContract_InsufficientEthFee(msg.value, ethFee);
             }
 
-            (bool success, ) = payable(s_feeAddress).call{value: msg.value}("");
+            (bool success, ) = payable(s_feeAddress).call{value: ethFee}("");
             if (!success) revert NFTContract_EthTransferFailed();
         }
-
-        uint256 tokenId = _nextTokenId();
-        for (uint256 i = 0; i < quantity; i++) {
-            _setTokenURI(tokenId, s_currentSet);
-            unchecked {
-                tokenId++;
-            }
-        }
-        _mint(msg.sender, quantity);
     }
 
     /// @notice Sets minting fee in terms of ERC20 tokens (only owner)
