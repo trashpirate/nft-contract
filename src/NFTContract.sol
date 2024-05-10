@@ -141,14 +141,10 @@ contract NFTContract is ERC721A, ERC2981, ERC721ABurnable, Ownable {
             revert NFTContract_ExceedsMaxSupply();
         }
 
-        if (i_paymentToken.balanceOf(msg.sender) < s_tokenFee * quantity) {
-            revert NFTContract_InsufficientTokenBalance();
-        }
-        if (msg.value < s_ethFee * quantity) {
-            revert NFTContract_InsufficientEthFee(msg.value, s_ethFee);
-        }
-
         if (s_tokenFee > 0) {
+            if (i_paymentToken.balanceOf(msg.sender) < s_tokenFee * quantity) {
+                revert NFTContract_InsufficientTokenBalance();
+            }
             bool success = i_paymentToken.transferFrom(
                 msg.sender,
                 s_feeAddress,
@@ -158,6 +154,10 @@ contract NFTContract is ERC721A, ERC2981, ERC721ABurnable, Ownable {
         }
 
         if (s_ethFee > 0) {
+            if (msg.value < s_ethFee * quantity) {
+                revert NFTContract_InsufficientEthFee(msg.value, s_ethFee);
+            }
+
             (bool success, ) = payable(s_feeAddress).call{value: msg.value}("");
             if (!success) revert NFTContract_EthTransferFailed();
         }
