@@ -145,7 +145,6 @@ contract TestUserFunctions is Test {
         deal(USER, 1 ether);
         uint256 ethBalance = USER.balance;
         uint256 tokenBalance = token.balanceOf(USER);
-        uint256 tokenFee = quantity * nftContract.getTokenFee();
         uint256 ethFee = quantity * nftContract.getEthFee();
 
         vm.prank(USER);
@@ -177,7 +176,6 @@ contract TestUserFunctions is Test {
         uint256 ethBalance = USER.balance;
         uint256 tokenBalance = token.balanceOf(USER);
         uint256 tokenFee = nftContract.getTokenFee();
-        uint256 ethFee = nftContract.getEthFee();
 
         address owner = nftContract.owner();
         vm.prank(owner);

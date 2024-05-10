@@ -51,7 +51,7 @@ deploy-local:
 	@forge script script/deployment/DeployNFTContract.s.sol:DeployNFTContract --rpc-url localhost --private-key ${DEFAULT_ANVIL_KEY} --sender 0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266 --broadcast 
 
 deploy-testnet: 
-	@forge script script/deployment/DeployNFTContract.s.sol:DeployNFTContract --rpc-url $(RPC_ETH_SEPOLIA) --account <KeystoreName> --sender <walletAddress> --broadcast --verify --etherscan-api-key sepoliascan
+	@forge script script/deployment/DeployNFTContract.s.sol:DeployNFTContract --rpc-url $(RPC_ETH_SEPOLIA) --account Test-Deployer --sender 0x11F392Ba82C7d63bFdb313Ca63372F6De21aB448 --broadcast --verify --etherscan-api-key sepoliascan
 
 deploy-mainnet: 
 	@forge script script/deployment/DeployNFTContract.s.sol:DeployNFTContract --rpc-url $(RPC_ETH_MAIN) --account <KeystoreName> --sender <walletAddress> --broadcast --verify --etherscan-api-key etherscan

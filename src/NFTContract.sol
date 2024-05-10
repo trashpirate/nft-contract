@@ -52,6 +52,8 @@ contract NFTContract is ERC721A, ERC2981, ERC721ABurnable, Ownable {
     mapping(uint256 tokenId => uint256) private s_tokenURINumber;
     mapping(uint256 set => string) private s_baseURI;
 
+    uint256[] private s_ids;
+
     /**
      * Events
      */
@@ -250,6 +252,10 @@ contract NFTContract is ERC721A, ERC2981, ERC721ABurnable, Ownable {
             s_maxSupply[setNumber] == 0
         ) revert NFTContract_SetNotConfigured();
         s_currentSet = setNumber;
+
+        delete s_ids;
+        s_ids = new uint256[](s_maxSupply[setNumber]);
+
         emit SetStarted(msg.sender, setNumber);
     }
 
@@ -414,5 +420,20 @@ contract NFTContract is ERC721A, ERC2981, ERC721ABurnable, Ownable {
     function _setContractURI(string memory _contractURI) private {
         s_contractURI = _contractURI;
         emit ContractURIUpdated(_contractURI);
+    }
+
+    /// @notice generates a random tokenURI
+    function _randomTokenURI() private returns (uint256 randomTokenURI) {
+        uint256 numAvailableURIs = s_ids.length;
+        uint256 randIdx = block.prevrandao % numAvailableURIs;
+
+        // get new and nonexisting random id
+        randomTokenURI = (s_ids[randIdx] != 0) ? s_ids[randIdx] : randIdx;
+
+        // update helper array
+        s_ids[randIdx] = (s_ids[numAvailableURIs - 1] == 0)
+            ? numAvailableURIs - 1
+            : s_ids[numAvailableURIs - 1];
+        s_ids.pop();
     }
 }
