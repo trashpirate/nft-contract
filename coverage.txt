@@ -1123,7 +1123,7 @@ Anchors for Contract "NFTContract" (solc 0.8.20, source ID 48):
   - Refers to item: Statement (location: source ID 48, line 135, chars 4925-4938, hits: 1026)
 - IC 1428 -> Item 345
 - Creation code
-  - Refers to item: Function "setBaseURI" (location: source ID 48, line 233, chars 8744-9007, hits: 7)
+  - Refers to item: Function "setConfig" (location: source ID 48, line 233, chars 8744-9007, hits: 7)
 - IC 4282 -> Item 295
 - Creation code
   - Refers to item: Line (location: source ID 48, line 182, chars 6601-6615, hits: 2)

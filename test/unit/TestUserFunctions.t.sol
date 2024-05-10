@@ -210,11 +210,44 @@ contract TestUserFunctions is Test {
         assertEq(nftContract.getCounter(0), quantity);
     }
 
+    function test__RandomizesSet() public funded(USER) unpaused {
+        address owner = nftContract.owner();
+        vm.startPrank(owner);
+        nftContract.setConfig(0, 10, 0, true, "set-0/");
+        nftContract.setConfig(1, 5, 0, false, "set-1/");
+        vm.stopPrank();
+
+        uint256 fee = nftContract.getEthFee();
+
+        uint256 maxSupply = nftContract.getMaxSupply(0);
+        for (uint256 index = 0; index < maxSupply; index++) {
+            vm.prank(USER);
+            nftContract.mint{value: fee}(1);
+        }
+
+        vm.expectRevert(NFTContract.NFTContract_ExceedsMaxSupply.selector);
+        vm.prank(USER);
+        nftContract.mint{value: fee}(1);
+
+        vm.prank(owner);
+        nftContract.startSet(1);
+
+        maxSupply = nftContract.getMaxSupply(1);
+        for (uint256 index = 0; index < maxSupply; index++) {
+            vm.prank(USER);
+            nftContract.mint{value: fee}(1);
+        }
+
+        for (uint256 index = 0; index < nftContract.totalSupply(); index++) {
+            console.log(nftContract.tokenURI(index + 1));
+        }
+    }
+
     function test__ContinueMintWithNewSet() public funded(USER) unpaused {
         address owner = nftContract.owner();
         vm.startPrank(owner);
-        nftContract.setBaseURI(0, 10, 0, "set-0/");
-        nftContract.setBaseURI(1, 5, 0, "set-1/");
+        nftContract.setConfig(0, 10, 0, false, "set-0/");
+        nftContract.setConfig(1, 5, 0, false, "set-1/");
         vm.stopPrank();
 
         uint256 fee = nftContract.getEthFee();

@@ -360,7 +360,7 @@ contract TestUserFunctions is Test {
         string memory newBaseURI = "new-base-uri/";
 
         vm.prank(owner);
-        nftContract.setBaseURI(1, 100, 0, newBaseURI);
+        nftContract.setConfig(1, 100, 0, false, newBaseURI);
 
         assertEq(nftContract.getBaseURI(1), newBaseURI);
     }
@@ -373,7 +373,7 @@ contract TestUserFunctions is Test {
         emit BaseURIUpdated(owner, 1, newBaseURI);
 
         vm.prank(owner);
-        nftContract.setBaseURI(1, 100, 0, newBaseURI);
+        nftContract.setConfig(1, 100, 0, false, newBaseURI);
     }
 
     function test__RevertWhen__NotOwnerSetsBaseURI() public {
@@ -386,7 +386,7 @@ contract TestUserFunctions is Test {
         );
 
         vm.prank(USER);
-        nftContract.setBaseURI(1, 100, 0, newBaseURI);
+        nftContract.setConfig(1, 100, 0, false, newBaseURI);
     }
 
     /**
@@ -397,7 +397,7 @@ contract TestUserFunctions is Test {
         string memory newBaseURI = "new-base-uri/";
 
         vm.prank(owner);
-        nftContract.setBaseURI(1, 100, 0, newBaseURI);
+        nftContract.setConfig(1, 100, 0, false, newBaseURI);
 
         vm.prank(owner);
         nftContract.startSet(1);
@@ -410,7 +410,7 @@ contract TestUserFunctions is Test {
         string memory newBaseURI = "new-base-uri/";
 
         vm.prank(owner);
-        nftContract.setBaseURI(1, 100, 0, newBaseURI);
+        nftContract.setConfig(1, 100, 0, false, newBaseURI);
 
         vm.expectEmit(true, true, true, true);
         emit SetStarted(owner, 1);
@@ -419,7 +419,16 @@ contract TestUserFunctions is Test {
         nftContract.startSet(1);
     }
 
-    function test__RevertWhen__SetAlreadyStarted() public {
+    function test__RevertWhen__SetAlreadyStarted()
+        public
+        funded(USER)
+        unpaused
+    {
+        uint256 ethFee = nftContract.getEthFee();
+
+        vm.prank(USER);
+        nftContract.mint{value: ethFee}(1);
+
         address owner = nftContract.owner();
         vm.expectRevert(NFTContract.NFTContract_SetAlreadyStarted.selector);
 

@@ -47,6 +47,7 @@ contract NFTContract is ERC721A, ERC2981, ERC721ABurnable, Ownable {
     uint256 s_currentSet;
 
     mapping(uint256 tokenId => uint256) private s_set;
+    mapping(uint256 set => bool) private s_randomized;
     mapping(uint256 set => uint256) private s_counter;
     mapping(uint256 set => uint256) private s_maxSupply;
     mapping(uint256 tokenId => uint256) private s_tokenURINumber;
@@ -119,11 +120,11 @@ contract NFTContract is ERC721A, ERC2981, ERC721ABurnable, Ownable {
 
         s_paused = true;
 
-        s_currentSet = 0;
-        s_maxSupply[0] = args.maxSupply;
-        _setBaseURI(0, args.baseURI);
+        _setConfig(0, args.maxSupply, 0, true, args.baseURI);
         _setContractURI(args.contractURI);
         _setDefaultRoyalty(args.feeAddress, args.royaltyNumerator);
+
+        _startSet(0);
         _transferOwnership(args.owner);
     }
 
@@ -232,31 +233,14 @@ contract NFTContract is ERC721A, ERC2981, ERC721ABurnable, Ownable {
     /// @param set to be updated
     /// @param counter counter for this set
     /// @param baseURI base uri
-    function setBaseURI(
+    function setConfig(
         uint256 set,
         uint256 maxSupply,
         uint256 counter,
+        bool randomized,
         string memory baseURI
     ) external onlyOwner {
-        s_maxSupply[set] = maxSupply;
-        s_counter[set] = counter;
-        _setBaseURI(set, baseURI);
-    }
-
-    /// @notice Sets current set
-    /// @param setNumber number of current set
-    function startSet(uint256 setNumber) external onlyOwner {
-        if (s_currentSet == setNumber) revert NFTContract_SetAlreadyStarted();
-        if (
-            bytes(s_baseURI[setNumber]).length == 0 ||
-            s_maxSupply[setNumber] == 0
-        ) revert NFTContract_SetNotConfigured();
-        s_currentSet = setNumber;
-
-        delete s_ids;
-        s_ids = new uint256[](s_maxSupply[setNumber]);
-
-        emit SetStarted(msg.sender, setNumber);
+        _setConfig(set, maxSupply, counter, randomized, baseURI);
     }
 
     /// @notice Sets royalty
@@ -268,6 +252,12 @@ contract NFTContract is ERC721A, ERC2981, ERC721ABurnable, Ownable {
     ) external onlyOwner {
         _setDefaultRoyalty(feeAddress, royaltyNumerator);
         emit RoyaltyUpdated(feeAddress, royaltyNumerator);
+    }
+
+    /// @notice Sets current set
+    /// @param setNumber number of current set
+    function startSet(uint256 setNumber) external onlyOwner {
+        _startSet(setNumber);
     }
 
     /// @notice Pauses minting
@@ -398,13 +388,55 @@ contract NFTContract is ERC721A, ERC2981, ERC721ABurnable, Ownable {
         return s_baseURI[set];
     }
 
+    /// @notice Sets base Uri for set
+    /// @param set to be updated
+    /// @param counter counter for this set
+    /// @param baseURI base uri
+    function _setConfig(
+        uint256 set,
+        uint256 maxSupply,
+        uint256 counter,
+        bool randomized,
+        string memory baseURI
+    ) private {
+        s_maxSupply[set] = maxSupply;
+        s_counter[set] = counter;
+        s_randomized[set] = randomized;
+        _setBaseURI(set, baseURI);
+    }
+
+    /// @notice Sets current set
+    /// @param setNumber number of current set
+    function _startSet(uint256 setNumber) private {
+        if (s_counter[setNumber] > 0) revert NFTContract_SetAlreadyStarted();
+        if (
+            bytes(s_baseURI[setNumber]).length == 0 ||
+            s_maxSupply[setNumber] == 0
+        ) revert NFTContract_SetNotConfigured();
+
+        if (s_randomized[setNumber]) {
+            delete s_ids;
+            s_ids = new uint256[](s_maxSupply[setNumber]);
+        }
+        s_currentSet = setNumber;
+        emit SetStarted(msg.sender, setNumber);
+    }
+
     /// @notice Checks if token owner exists
     /// @dev adapted code from openzeppelin ERC721URIStorage
     function _setTokenURI(uint256 tokenId, uint256 set) private {
         s_set[tokenId] = set;
+
         unchecked {
-            s_tokenURINumber[tokenId] = s_counter[set]++;
+            s_counter[set]++;
         }
+
+        if (s_randomized[set]) {
+            s_tokenURINumber[tokenId] = _randomTokenURI();
+        } else {
+            s_tokenURINumber[tokenId] = s_counter[set];
+        }
+
         emit MetadataUpdated(tokenId);
     }
 
