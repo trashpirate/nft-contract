@@ -3,6 +3,7 @@ pragma solidity ^0.8.20;
 
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
+import {Strings} from "@openzeppelin/contracts/utils/Strings.sol";
 import {ERC2981} from "@openzeppelin/contracts/token/common/ERC2981.sol";
 import {ERC721A, IERC721A} from "@erc721a/contracts/ERC721A.sol";
 import {ERC721ABurnable} from "@erc721a/contracts/extensions/ERC721ABurnable.sol";
@@ -32,7 +33,6 @@ contract NFTContract is ERC721A, ERC2981, ERC721ABurnable, Ownable {
     /**
      * Storage Variables
      */
-    uint256 private i_maxSupply;
     IERC20 private immutable i_paymentToken;
 
     address private s_feeAddress;
@@ -40,10 +40,17 @@ contract NFTContract is ERC721A, ERC2981, ERC721ABurnable, Ownable {
     uint256 private s_ethFee;
     uint256 private s_batchLimit = 50;
 
-    string private s_baseURI;
     string private s_contractURI;
 
     bool private s_paused;
+
+    uint256 s_currentSet;
+
+    mapping(uint256 tokenId => uint256) private s_set;
+    mapping(uint256 set => uint256) private s_counter;
+    mapping(uint256 set => uint256) private s_maxSupply;
+    mapping(uint256 tokenId => uint256) private s_tokenURINumber;
+    mapping(uint256 set => string) private s_baseURI;
 
     /**
      * Events
@@ -53,12 +60,14 @@ contract NFTContract is ERC721A, ERC2981, ERC721ABurnable, Ownable {
     event EthFeeSet(address indexed sender, uint256 fee);
     event FeeAddressSet(address indexed sender, address feeAddress);
     event BatchLimitSet(address indexed sender, uint256 batchLimit);
-    event BaseURIUpdated(string indexed baseUri);
+    event BaseURIUpdated(address indexed sender, uint256 set, string baseUri);
+    event SetStarted(address indexed sender, uint256 currentSet);
     event ContractURIUpdated(string indexed contractUri);
     event RoyaltyUpdated(
         address indexed feeAddress,
         uint96 indexed royaltyNumerator
     );
+    event MetadataUpdated(uint256 indexed tokenId);
 
     /**
      * Errors
@@ -77,6 +86,8 @@ contract NFTContract is ERC721A, ERC2981, ERC721ABurnable, Ownable {
     error NFTContract_TokenUriError();
     error NFTContract_NoBaseURI();
     error NFTContract_ContractIsPaused();
+    error NFTContract_SetAlreadyStarted();
+    error NFTContract_SetNotConfigured();
 
     /// @notice Constructor
     /// @param args constructor arguments:
@@ -103,10 +114,12 @@ contract NFTContract is ERC721A, ERC2981, ERC721ABurnable, Ownable {
         s_ethFee = args.ethFee;
         s_feeAddress = args.feeAddress;
         i_paymentToken = IERC20(args.tokenAddress);
-        i_maxSupply = args.maxSupply;
+
         s_paused = true;
 
-        _setBaseURI(args.baseURI);
+        s_currentSet = 0;
+        s_maxSupply[0] = args.maxSupply;
+        _setBaseURI(0, args.baseURI);
         _setContractURI(args.contractURI);
         _setDefaultRoyalty(args.feeAddress, args.royaltyNumerator);
         _transferOwnership(args.owner);
@@ -121,7 +134,7 @@ contract NFTContract is ERC721A, ERC2981, ERC721ABurnable, Ownable {
 
         if (quantity == 0) revert NFTContract_InsufficientMintQuantity();
         if (quantity > s_batchLimit) revert NFTContract_ExceedsBatchLimit();
-        if (totalSupply() + quantity > i_maxSupply) {
+        if (s_counter[s_currentSet] + quantity > s_maxSupply[s_currentSet]) {
             revert NFTContract_ExceedsMaxSupply();
         }
 
@@ -146,6 +159,13 @@ contract NFTContract is ERC721A, ERC2981, ERC721ABurnable, Ownable {
             if (!success) revert NFTContract_EthTransferFailed();
         }
 
+        uint256 tokenId = _nextTokenId();
+        for (uint256 i = 0; i < quantity; i++) {
+            _setTokenURI(tokenId, s_currentSet);
+            unchecked {
+                tokenId++;
+            }
+        }
         _mint(msg.sender, quantity);
     }
 
@@ -206,10 +226,31 @@ contract NFTContract is ERC721A, ERC2981, ERC721ABurnable, Ownable {
         if (!success) revert NFTContract_EthTransferFailed();
     }
 
-    /// @notice Sets base Uri
+    /// @notice Sets base Uri for set
+    /// @param set to be updated
+    /// @param counter counter for this set
     /// @param baseURI base uri
-    function setBaseURI(string memory baseURI) external onlyOwner {
-        _setBaseURI(baseURI);
+    function setBaseURI(
+        uint256 set,
+        uint256 maxSupply,
+        uint256 counter,
+        string memory baseURI
+    ) external onlyOwner {
+        s_maxSupply[set] = maxSupply;
+        s_counter[set] = counter;
+        _setBaseURI(set, baseURI);
+    }
+
+    /// @notice Sets current set
+    /// @param setNumber number of current set
+    function startSet(uint256 setNumber) external onlyOwner {
+        if (s_currentSet == setNumber) revert NFTContract_SetAlreadyStarted();
+        if (
+            bytes(s_baseURI[setNumber]).length == 0 ||
+            s_maxSupply[setNumber] == 0
+        ) revert NFTContract_SetNotConfigured();
+        s_currentSet = setNumber;
+        emit SetStarted(msg.sender, setNumber);
     }
 
     /// @notice Sets royalty
@@ -240,8 +281,13 @@ contract NFTContract is ERC721A, ERC2981, ERC721ABurnable, Ownable {
     }
 
     /// @notice Gets maximum supply
-    function getMaxSupply() external view returns (uint256) {
-        return i_maxSupply;
+    function getMaxSupply(uint256 set) external view returns (uint256) {
+        return s_maxSupply[set];
+    }
+
+    /// @notice Gets counter
+    function getCounter(uint256 set) external view returns (uint256) {
+        return s_counter[set];
     }
 
     /// @notice Gets minting token fee in ERC20
@@ -265,8 +311,13 @@ contract NFTContract is ERC721A, ERC2981, ERC721ABurnable, Ownable {
     }
 
     /// @notice Gets base uri
-    function getBaseURI() external view returns (string memory) {
-        return _baseURI();
+    function getBaseURI(uint256 set) external view returns (string memory) {
+        return _baseURI(set);
+    }
+
+    /// @notice Gets base uri
+    function getCurrentSet() external view returns (uint256) {
+        return s_currentSet;
     }
 
     /// @notice Gets whether contract is paused
@@ -283,6 +334,26 @@ contract NFTContract is ERC721A, ERC2981, ERC721ABurnable, Ownable {
         return s_contractURI;
     }
 
+    /// @notice retrieves tokenURI
+    /// @dev adapted from openzeppelin ERC721URIStorage contract
+    /// @param tokenId tokenID of NFT
+    function tokenURI(
+        uint256 tokenId
+    ) public view override(ERC721A, IERC721A) returns (string memory) {
+        _requireOwned(tokenId);
+
+        string memory _tokenURI = Strings.toString(s_tokenURINumber[tokenId]);
+
+        string memory base = _baseURI(s_set[tokenId]);
+
+        // If both are set, concatenate the baseURI and tokenURI (via string.concat).
+        if (bytes(_tokenURI).length > 0) {
+            return string.concat(base, _tokenURI);
+        }
+
+        return super.tokenURI(tokenId);
+    }
+
     /// @notice checks for supported interface
     /// @dev function override required by ERC721
     /// @param interfaceId interfaceId to be checked
@@ -297,6 +368,14 @@ contract NFTContract is ERC721A, ERC2981, ERC721ABurnable, Ownable {
     /**
      * Internal/Private Functions
      */
+
+    /// @notice Checks if token owner exists
+    /// @dev adapted code from openzeppelin ERC721
+    /// @param tokenId token id of NFT
+    function _requireOwned(uint256 tokenId) internal view {
+        ownerOf(tokenId);
+    }
+
     /// @notice sets first tokenId to 1
     function _startTokenId()
         internal
@@ -309,15 +388,25 @@ contract NFTContract is ERC721A, ERC2981, ERC721ABurnable, Ownable {
     }
 
     /// @notice Retrieves base uri
-    function _baseURI() internal view override returns (string memory) {
-        return s_baseURI;
+    function _baseURI(uint256 set) internal view returns (string memory) {
+        return s_baseURI[set];
+    }
+
+    /// @notice Checks if token owner exists
+    /// @dev adapted code from openzeppelin ERC721URIStorage
+    function _setTokenURI(uint256 tokenId, uint256 set) private {
+        s_set[tokenId] = set;
+        unchecked {
+            s_tokenURINumber[tokenId] = s_counter[set]++;
+        }
+        emit MetadataUpdated(tokenId);
     }
 
     /// @notice Sets base uri
     /// @param baseURI base uri for NFT metadata
-    function _setBaseURI(string memory baseURI) private {
-        s_baseURI = baseURI;
-        emit BaseURIUpdated(baseURI);
+    function _setBaseURI(uint256 set, string memory baseURI) private {
+        s_baseURI[set] = baseURI;
+        emit BaseURIUpdated(msg.sender, set, baseURI);
     }
 
     /// @notice Sets contract uri

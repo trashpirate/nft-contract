@@ -102,24 +102,147 @@ contract TestUserFunctions is Test {
     /**
      * MINT
      */
-    function test__Mint(uint256 quantity, address account) public unpaused noBatchLimit funded(account) skipFork {
+    function test__Mint(
+        uint256 quantity,
+        address account
+    ) public unpaused noBatchLimit funded(account) skipFork {
         quantity = bound(quantity, 1, nftContract.getBatchLimit());
         vm.assume(account != address(0));
 
-        uint256 ethBalance = USER.balance;
-        uint256 tokenBalance = token.balanceOf(USER);
+        uint256 ethBalance = account.balance;
+        uint256 tokenBalance = token.balanceOf(account);
         uint256 tokenFee = quantity * nftContract.getTokenFee();
         uint256 ethFee = quantity * nftContract.getEthFee();
 
         vm.prank(account);
         nftContract.mint{value: ethFee}(quantity);
 
+        // correct nft balance
         assertEq(nftContract.balanceOf(account), quantity);
+
+        // correct nft ownership
         assertEq(nftContract.ownerOf(0), account);
-        assertEq(USER.balance, ethBalance - ethFee);
-        assertEq(token.balanceOf(USER), tokenBalance - tokenFee);
+
+        // correct eth fee charged
+        assertEq(account.balance, ethBalance - ethFee);
+
+        // correct token fee charged
+        assertEq(token.balanceOf(account), tokenBalance - tokenFee);
+
+        // fee sent to correct address
         assertEq(nftContract.getFeeAddress().balance, ethFee);
         assertEq(token.balanceOf(nftContract.getFeeAddress()), tokenFee);
+    }
+
+    function test__ChargesNoTokenFeeIfTokenFeeIsZero()
+        public
+        unpaused
+        noBatchLimit
+        skipFork
+    {
+        uint256 quantity = 1;
+
+        deal(USER, 1 ether);
+        uint256 ethBalance = USER.balance;
+        uint256 tokenBalance = token.balanceOf(USER);
+        uint256 tokenFee = quantity * nftContract.getTokenFee();
+        uint256 ethFee = quantity * nftContract.getEthFee();
+
+        vm.prank(USER);
+        nftContract.mint{value: ethFee}(quantity);
+
+        // correct nft balance
+        assertEq(nftContract.balanceOf(USER), quantity);
+
+        // correct nft ownership
+        assertEq(nftContract.ownerOf(0), USER);
+
+        // correct eth fee charged
+        assertEq(USER.balance, ethBalance - ethFee);
+
+        // correct token fee charged
+        assertEq(token.balanceOf(USER), tokenBalance);
+
+        // fee sent to correct address
+        assertEq(nftContract.getFeeAddress().balance, ethFee);
+    }
+
+    function test__ChargesNoFeeifZeroEthFee()
+        public
+        unpaused
+        noBatchLimit
+        funded(USER)
+        skipFork
+    {
+        uint256 ethBalance = USER.balance;
+        uint256 tokenBalance = token.balanceOf(USER);
+        uint256 tokenFee = nftContract.getTokenFee();
+        uint256 ethFee = nftContract.getEthFee();
+
+        address owner = nftContract.owner();
+        vm.prank(owner);
+        nftContract.setEthFee(0);
+
+        vm.prank(USER);
+        nftContract.mint(1);
+
+        // correct nft balance
+        assertEq(nftContract.balanceOf(USER), 1);
+
+        // correct nft ownership
+        assertEq(nftContract.ownerOf(0), USER);
+
+        // correct eth fee charged
+        assertEq(USER.balance, ethBalance);
+
+        // correct token fee charged
+        assertEq(token.balanceOf(USER), tokenBalance - tokenFee);
+    }
+
+    function test__CounterIncreases(
+        uint256 quantity
+    ) public unpaused noBatchLimit funded(USER) skipFork {
+        quantity = bound(quantity, 1, nftContract.getBatchLimit());
+
+        uint256 ethFee = quantity * nftContract.getEthFee();
+
+        vm.prank(USER);
+        nftContract.mint{value: ethFee}(quantity);
+
+        assertEq(nftContract.getCounter(0), quantity);
+    }
+
+    function test__ContinueMintWithNewSet() public funded(USER) unpaused {
+        address owner = nftContract.owner();
+        vm.startPrank(owner);
+        nftContract.setBaseURI(0, 10, 0, "set-0/");
+        nftContract.setBaseURI(1, 5, 0, "set-1/");
+        vm.stopPrank();
+
+        uint256 fee = nftContract.getEthFee();
+
+        uint256 maxSupply = nftContract.getMaxSupply(0);
+        for (uint256 index = 0; index < maxSupply; index++) {
+            vm.prank(USER);
+            nftContract.mint{value: fee}(1);
+        }
+
+        vm.expectRevert(NFTContract.NFTContract_ExceedsMaxSupply.selector);
+        vm.prank(USER);
+        nftContract.mint{value: fee}(1);
+
+        vm.prank(owner);
+        nftContract.startSet(1);
+
+        maxSupply = nftContract.getMaxSupply(1);
+        for (uint256 index = 0; index < maxSupply; index++) {
+            vm.prank(USER);
+            nftContract.mint{value: fee}(1);
+        }
+
+        for (uint256 index = 0; index < nftContract.totalSupply(); index++) {
+            console.log(nftContract.tokenURI(index + 1));
+        }
     }
 
     function test__RevertWhen__Paused() public funded(USER) {
@@ -130,39 +253,59 @@ contract TestUserFunctions is Test {
         nftContract.mint{value: ethFee}(1);
     }
 
-    function test__RevertWhen__InsufficientEthFee(uint256 quantity) public funded(USER) unpaused skipFork {
+    function test__RevertWhen__InsufficientEthFee(
+        uint256 quantity
+    ) public funded(USER) unpaused skipFork {
         quantity = bound(quantity, 1, nftContract.getBatchLimit());
 
         uint256 ethFee = nftContract.getEthFee() * quantity;
         uint256 insufficientFee = ethFee - 0.01 ether;
 
         vm.expectRevert(
-            abi.encodeWithSelector(NFTContract.NFTContract_InsufficientEthFee.selector, insufficientFee, ethFee)
+            abi.encodeWithSelector(
+                NFTContract.NFTContract_InsufficientEthFee.selector,
+                insufficientFee,
+                ethFee
+            )
         );
         vm.prank(USER);
         nftContract.mint{value: insufficientFee}(quantity);
     }
 
-    function test__RevertWhen__InsufficientTokenFee(uint256 quantity) public unpaused skipFork {
+    function test__RevertWhen__InsufficientTokenFee(
+        uint256 quantity
+    ) public unpaused skipFork {
         quantity = bound(quantity, 1, nftContract.getBatchLimit());
 
         deal(USER, 1000 ether);
         uint256 ethFee = nftContract.getEthFee() * quantity;
 
-        vm.expectRevert(NFTContract.NFTContract_InsufficientTokenBalance.selector);
+        vm.expectRevert(
+            NFTContract.NFTContract_InsufficientTokenBalance.selector
+        );
         vm.prank(USER);
         nftContract.mint{value: ethFee}(quantity);
     }
 
-    function test__RevertWhen__InsufficientMintQuantity() public funded(USER) unpaused {
+    function test__RevertWhen__InsufficientMintQuantity()
+        public
+        funded(USER)
+        unpaused
+    {
         uint256 ethFee = nftContract.getEthFee();
 
-        vm.expectRevert(NFTContract.NFTContract_InsufficientMintQuantity.selector);
+        vm.expectRevert(
+            NFTContract.NFTContract_InsufficientMintQuantity.selector
+        );
         vm.prank(USER);
         nftContract.mint{value: ethFee}(0);
     }
 
-    function test__RevertWhen__MintExceedsBatchLimit() public funded(USER) unpaused {
+    function test__RevertWhen__MintExceedsBatchLimit()
+        public
+        funded(USER)
+        unpaused
+    {
         address owner = nftContract.owner();
         vm.prank(owner);
         nftContract.setBatchLimit(5);
@@ -175,9 +318,13 @@ contract TestUserFunctions is Test {
         nftContract.mint{value: ethFee}(quantity);
     }
 
-    function test__RevertWhen__MaxSupplyExceeded() public funded(USER) unpaused {
+    function test__RevertWhen__MaxSupplyExceeded()
+        public
+        funded(USER)
+        unpaused
+    {
         uint256 fee = nftContract.getEthFee();
-        uint256 maxSupply = nftContract.getMaxSupply();
+        uint256 maxSupply = nftContract.getMaxSupply(0);
 
         for (uint256 index = 0; index < maxSupply; index++) {
             vm.prank(USER);
@@ -189,14 +336,23 @@ contract TestUserFunctions is Test {
         nftContract.mint{value: fee}(1);
     }
 
-    function test__RevertsWhen__TokenTransferFails() public funded(USER) unpaused {
+    function test__RevertsWhen__TokenTransferFails()
+        public
+        funded(USER)
+        unpaused
+    {
         uint256 ethFee = nftContract.getEthFee();
         uint256 tokenFee = nftContract.getTokenFee();
 
         address feeAccount = nftContract.getFeeAddress();
         vm.mockCall(
             address(token),
-            abi.encodeWithSelector(token.transferFrom.selector, USER, feeAccount, tokenFee),
+            abi.encodeWithSelector(
+                token.transferFrom.selector,
+                USER,
+                feeAccount,
+                tokenFee
+            ),
             abi.encode(false)
         );
 
@@ -208,7 +364,10 @@ contract TestUserFunctions is Test {
     /**
      * TRANSFER
      */
-    function test__Transfer(address account, address receiver) public unpaused noBatchLimit skipFork {
+    function test__Transfer(
+        address account,
+        address receiver
+    ) public unpaused noBatchLimit skipFork {
         uint256 quantity = 1; //bound(numOfNfts, 1, 100);
         vm.assume(account != address(0));
         vm.assume(receiver != address(0));
@@ -239,15 +398,20 @@ contract TestUserFunctions is Test {
         vm.prank(USER);
         nftContract.mint{value: ethFee}(1);
         assertEq(nftContract.balanceOf(USER), 1);
-        assertEq(nftContract.tokenURI(1), string.concat(networkConfig.args.baseURI, "1"));
+        assertEq(
+            nftContract.tokenURI(1),
+            string.concat(networkConfig.args.baseURI, "0")
+        );
     }
 
     /// forge-config: default.fuzz.runs = 3
-    function test__UniqueTokenURI(uint256 roll) public funded(USER) unpaused noBatchLimit skipFork {
+    function test__UniqueTokenURI(
+        uint256 roll
+    ) public funded(USER) unpaused noBatchLimit skipFork {
         roll = bound(roll, 0, 100000000000);
         TestHelper testHelper = new TestHelper();
 
-        uint256 maxSupply = nftContract.getMaxSupply();
+        uint256 maxSupply = nftContract.getMaxSupply(0);
 
         vm.startPrank(USER);
         for (uint256 index = 0; index < maxSupply; index++) {
@@ -255,7 +419,10 @@ contract TestUserFunctions is Test {
             uint256 ethFee = nftContract.getEthFee();
 
             nftContract.mint{value: ethFee}(1);
-            assertEq(testHelper.isTokenUriSet(nftContract.tokenURI(index + 1)), false);
+            assertEq(
+                testHelper.isTokenUriSet(nftContract.tokenURI(index + 1)),
+                false
+            );
             console.log(nftContract.tokenURI(index + 1));
             testHelper.setTokenUri(nftContract.tokenURI(index + 1));
         }

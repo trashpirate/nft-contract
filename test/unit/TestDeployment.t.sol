@@ -30,10 +30,10 @@ contract TestDeployment is Test {
      * INITIALIZATION
      */
     function test__Initialization() public {
-        assertEq(nftContract.getMaxSupply(), networkConfig.args.maxSupply);
+        assertEq(nftContract.getMaxSupply(0), networkConfig.args.maxSupply);
 
         assertEq(nftContract.getFeeAddress(), networkConfig.args.feeAddress);
-        assertEq(nftContract.getBaseURI(), networkConfig.args.baseURI);
+        assertEq(nftContract.getBaseURI(0), networkConfig.args.baseURI);
         assertEq(nftContract.contractURI(), networkConfig.args.contractURI);
 
         assertEq(nftContract.getBatchLimit(), 50);
@@ -55,7 +55,7 @@ contract TestDeployment is Test {
             (networkConfig.args.royaltyNumerator * 100) / 10000
         );
 
-        vm.expectRevert(IERC721A.URIQueryForNonexistentToken.selector);
+        vm.expectRevert(IERC721A.OwnerQueryForNonexistentToken.selector);
         nftContract.tokenURI(1);
     }
 
