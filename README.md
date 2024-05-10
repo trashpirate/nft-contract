@@ -67,7 +67,7 @@ Smart contract inheriting from ERC721A with a native and ERC20 token fee for min
    ```sh
    cd nft-contract
    ```
-3. Install Forge submodules
+3. Install Foundry submodules
    ```sh
    forge install
    ```

@@ -37,12 +37,23 @@ contract TestDeployment is Test {
         assertEq(nftContract.contractURI(), networkConfig.args.contractURI);
 
         assertEq(nftContract.getBatchLimit(), 50);
-        assertEq(nftContract.getTokenFee(), 400 ether);
-        assertEq(nftContract.getEthFee(), 0.1 ether);
+        assertEq(nftContract.getTokenFee(), networkConfig.args.tokenFee);
+        assertEq(nftContract.getEthFee(), networkConfig.args.ethFee);
         assertEq(nftContract.isPaused(), true);
 
         assertEq(nftContract.supportsInterface(0x80ac58cd), true); // ERC721
         assertEq(nftContract.supportsInterface(0x2a55205a), true); // ERC2981
+
+        uint256 salePrice = 100;
+        (address feeAddress, uint256 royaltyAmount) = nftContract.royaltyInfo(
+            0,
+            salePrice
+        );
+        assertEq(feeAddress, networkConfig.args.feeAddress);
+        assertEq(
+            royaltyAmount,
+            (networkConfig.args.royaltyNumerator * 100) / 10000
+        );
 
         vm.expectRevert(IERC721A.URIQueryForNonexistentToken.selector);
         nftContract.tokenURI(1);

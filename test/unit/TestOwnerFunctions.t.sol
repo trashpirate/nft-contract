@@ -31,7 +31,10 @@ contract TestUserFunctions is Test {
     // events
     event BatchLimitSet(address indexed sender, uint256 batchLimit);
     event BaseURIUpdated(string indexed baseUri);
-    event RoyaltyUpdated(address indexed feeAddress, uint96 indexed royaltyNumerator);
+    event RoyaltyUpdated(
+        address indexed feeAddress,
+        uint96 indexed royaltyNumerator
+    );
     event EthFeeSet(address indexed sender, uint256 fee);
     event TokenFeeSet(address indexed sender, uint256 fee);
     event FeeAddressSet(address indexed sender, address feeAddress);
@@ -122,7 +125,12 @@ contract TestUserFunctions is Test {
         vm.prank(owner);
         nftContract.pause(false);
 
-        vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, USER));
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                Ownable.OwnableUnauthorizedAccount.selector,
+                USER
+            )
+        );
         vm.prank(USER);
         nftContract.pause(true);
     }
@@ -158,7 +166,12 @@ contract TestUserFunctions is Test {
     function test__RevertWhen__NotOwnerSetsBatchLimit() public {
         vm.prank(USER);
 
-        vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, USER));
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                Ownable.OwnableUnauthorizedAccount.selector,
+                USER
+            )
+        );
         nftContract.setBatchLimit(NEW_BATCH_LIMIT);
     }
 
@@ -186,14 +199,21 @@ contract TestUserFunctions is Test {
         address owner = nftContract.owner();
         vm.prank(owner);
 
-        vm.expectRevert(NFTContract.NFTContract_FeeAddressIsZeroAddress.selector);
+        vm.expectRevert(
+            NFTContract.NFTContract_FeeAddressIsZeroAddress.selector
+        );
         nftContract.setFeeAddress(address(0));
     }
 
     function test__RevertWhen__NotOwnerSetsFeeAddress() public {
         vm.prank(USER);
 
-        vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, USER));
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                Ownable.OwnableUnauthorizedAccount.selector,
+                USER
+            )
+        );
         nftContract.setFeeAddress(NEW_FEE_ADDRESS);
     }
 
@@ -220,7 +240,12 @@ contract TestUserFunctions is Test {
     function test__RevertWhen__NotOwnerSetsEthFee() public {
         vm.prank(USER);
 
-        vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, USER));
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                Ownable.OwnableUnauthorizedAccount.selector,
+                USER
+            )
+        );
         nftContract.setEthFee(NEW_FEE);
     }
 
@@ -247,7 +272,12 @@ contract TestUserFunctions is Test {
     function test__RevertWhen__NotOwnerSetsTokenFee() public {
         vm.prank(USER);
 
-        vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, USER));
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                Ownable.OwnableUnauthorizedAccount.selector,
+                USER
+            )
+        );
         nftContract.setTokenFee(NEW_FEE);
     }
 
@@ -273,7 +303,12 @@ contract TestUserFunctions is Test {
     function test__RevertWhen__NotOwnerWithdrawsETH() public funded(USER) {
         deal(address(nftContract), 1 ether);
         address owner = nftContract.owner();
-        vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, USER));
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                Ownable.OwnableUnauthorizedAccount.selector,
+                USER
+            )
+        );
         console.log(USER);
         vm.prank(USER);
         nftContract.withdrawETH(owner);
@@ -305,7 +340,12 @@ contract TestUserFunctions is Test {
         token.transfer(address(nftContract), STARTING_BALANCE / 2);
 
         address owner = nftContract.owner();
-        vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, USER));
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                Ownable.OwnableUnauthorizedAccount.selector,
+                USER
+            )
+        );
 
         vm.prank(USER);
         nftContract.withdrawTokens(address(token), owner);
@@ -322,7 +362,10 @@ contract TestUserFunctions is Test {
         nftContract.setRoyalty(USER, newRoyalty);
 
         uint256 salePrice = 100;
-        (address feeAddress, uint256 royaltyAmount) = nftContract.royaltyInfo(0, salePrice);
+        (address feeAddress, uint256 royaltyAmount) = nftContract.royaltyInfo(
+            0,
+            salePrice
+        );
         assertEq(feeAddress, USER);
         assertEq(royaltyAmount, 10);
     }
@@ -340,7 +383,12 @@ contract TestUserFunctions is Test {
 
     function test__RevertWhen__NotOwnerSetsRoyalty() public {
         uint96 newRoyalty = 1000;
-        vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, USER));
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                Ownable.OwnableUnauthorizedAccount.selector,
+                USER
+            )
+        );
 
         vm.prank(USER);
         nftContract.setRoyalty(USER, newRoyalty);
