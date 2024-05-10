@@ -421,27 +421,17 @@ contract TestUserFunctions is Test {
 
     function test__RevertWhen__SetAlreadyStarted() public {
         address owner = nftContract.owner();
-        vm.expectRevert(
-            abi.encodeWithSelector(
-                Ownable.OwnableUnauthorizedAccount.selector,
-                USER
-            )
-        );
+        vm.expectRevert(NFTContract.NFTContract_SetAlreadyStarted.selector);
 
-        vm.prank(USER);
+        vm.prank(owner);
         nftContract.startSet(0);
     }
 
     function test__RevertWhen__SetNotConfigured() public {
         address owner = nftContract.owner();
-        vm.expectRevert(
-            abi.encodeWithSelector(
-                Ownable.OwnableUnauthorizedAccount.selector,
-                USER
-            )
-        );
+        vm.expectRevert(NFTContract.NFTContract_SetNotConfigured.selector);
 
-        vm.prank(USER);
+        vm.prank(owner);
         nftContract.startSet(1);
     }
 
