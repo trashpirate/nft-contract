@@ -132,7 +132,6 @@ contract TestUserFunctions is Test {
     }
 
     function test__EmitEvent__Mint() public funded(USER) unpaused noBatchLimit {
-        uint256 tokenFee = nftContract.getTokenFee();
         uint256 ethFee = nftContract.getEthFee();
 
         vm.expectEmit(true, true, true, true);
