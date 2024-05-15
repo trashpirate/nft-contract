@@ -32,7 +32,7 @@ contract NFTContract is ERC721A, ERC2981, ERC721ABurnable, Ownable {
     /**
      * Storage Variables
      */
-    uint256 private i_maxSupply;
+    uint256 private immutable i_maxSupply;
     IERC20 private immutable i_paymentToken;
 
     address private s_feeAddress;
