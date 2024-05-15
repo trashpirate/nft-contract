@@ -4,12 +4,6 @@
 
 DEFAULT_ANVIL_KEY := 0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80
 
-help:
-	@echo "Usage:"
-	@echo "  make deploy [ARGS=...]\n    example: make deploy ARGS=\"--network bsctest\""
-	@echo ""
-	@echo "  make fund [ARGS=...]\n    example: make deploy ARGS=\"--network bsctest\""
-
 all: clean remove install update build
 
 # Clean the repo
@@ -50,11 +44,14 @@ fork :; @anvil --fork-url ${RPC_ETH_MAIN} --fork-block-number 19799039 --fork-ch
 deploy-local: 
 	@forge script script/deployment/DeployNFTContract.s.sol:DeployNFTContract --rpc-url localhost --private-key ${DEFAULT_ANVIL_KEY} --sender 0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266 --broadcast 
 
+deploy-token-testnet: 
+	@forge script script/deployment/DeployERC20Token.s.sol:DeployERC20Token --rpc-url $(RPC_ETH_SEPOLIA) --account <KeystoreName> --sender <walletAddress> --broadcast --verify --etherscan-api-key $(ETHERSCAN_API_KEY) -vvvv
+
 deploy-testnet: 
-	@forge script script/deployment/DeployNFTContract.s.sol:DeployNFTContract --rpc-url $(RPC_ETH_SEPOLIA) --account <KeystoreName> --sender <walletAddress> --broadcast --verify --etherscan-api-key sepoliascan
+	@forge script script/deployment/DeployNFTContract.s.sol:DeployNFTContract --rpc-url $(RPC_ETH_SEPOLIA) --account <KeystoreName> --sender <walletAddress> --broadcast --verify --etherscan-api-key $(ETHERSCAN_API_KEY) -vvvv
 
 deploy-mainnet: 
-	@forge script script/deployment/DeployNFTContract.s.sol:DeployNFTContract --rpc-url $(RPC_ETH_MAIN) --account <KeystoreName> --sender <walletAddress> --broadcast --verify --etherscan-api-key etherscan
+	@forge script script/deployment/DeployNFTContract.s.sol:DeployNFTContract --rpc-url $(RPC_ETH_MAIN) --account <KeystoreName> --sender <walletAddress> --broadcast --verify --etherscan-api-key $(ETHERSCAN_API_KEY) -vvvv
 
 
 # interaction

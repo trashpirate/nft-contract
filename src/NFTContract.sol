@@ -45,6 +45,9 @@ contract NFTContract is ERC721A, ERC2981, ERC721ABurnable, Ownable {
 
     bool private s_paused;
 
+    mapping(uint256 tokenId => uint256) private s_tokenURINumber;
+    uint256[] private s_ids;
+
     /**
      * Events
      */
@@ -53,24 +56,29 @@ contract NFTContract is ERC721A, ERC2981, ERC721ABurnable, Ownable {
     event EthFeeSet(address indexed sender, uint256 fee);
     event FeeAddressSet(address indexed sender, address feeAddress);
     event BatchLimitSet(address indexed sender, uint256 batchLimit);
-    event BaseURIUpdated(string indexed baseUri);
-    event ContractURIUpdated(string indexed contractUri);
+    event BaseURIUpdated(address indexed sender, string indexed baseUri);
+    event ContractURIUpdated(
+        address indexed sender,
+        string indexed contractUri
+    );
     event RoyaltyUpdated(
         address indexed feeAddress,
         uint96 indexed royaltyNumerator
     );
+    event MetadataUpdated(uint256 indexed tokenId);
 
     /**
      * Errors
      */
-    error NFTContract_InsufficientTokenBalance();
+
     error NFTContract_InsufficientMintQuantity();
     error NFTContract_ExceedsMaxSupply();
     error NFTContract_ExceedsMaxPerWallet();
     error NFTContract_ExceedsBatchLimit();
     error NFTContract_FeeAddressIsZeroAddress();
-    error NFTContract_TokenTransferFailed();
+    error NFTContract_InsufficientTokenBalance(uint256 value, uint256 fee);
     error NFTContract_InsufficientEthFee(uint256 value, uint256 fee);
+    error NFTContract_TokenTransferFailed();
     error NFTContract_EthTransferFailed();
     error NFTContract_BatchLimitTooHigh();
     error NFTContract_NonexistentToken(uint256);
@@ -106,6 +114,8 @@ contract NFTContract is ERC721A, ERC2981, ERC721ABurnable, Ownable {
         i_maxSupply = args.maxSupply;
         s_paused = true;
 
+        s_ids = new uint256[](args.maxSupply);
+
         _setBaseURI(args.baseURI);
         _setContractURI(args.contractURI);
         _setDefaultRoyalty(args.feeAddress, args.royaltyNumerator);
@@ -125,28 +135,44 @@ contract NFTContract is ERC721A, ERC2981, ERC721ABurnable, Ownable {
             revert NFTContract_ExceedsMaxSupply();
         }
 
-        if (i_paymentToken.balanceOf(msg.sender) < s_tokenFee * quantity) {
-            revert NFTContract_InsufficientTokenBalance();
-        }
-        if (msg.value < s_ethFee * quantity) {
-            revert NFTContract_InsufficientEthFee(msg.value, s_ethFee);
+        // mint nfts
+        uint256 tokenId = _nextTokenId();
+        for (uint256 i = 0; i < quantity; i++) {
+            _setTokenURI(tokenId);
+            unchecked {
+                tokenId++;
+            }
         }
 
+        _mint(msg.sender, quantity);
+
         if (s_tokenFee > 0) {
+            uint256 totalTokenFee = s_tokenFee * quantity;
+            if (i_paymentToken.balanceOf(msg.sender) < totalTokenFee) {
+                revert NFTContract_InsufficientTokenBalance(
+                    i_paymentToken.balanceOf(msg.sender),
+                    totalTokenFee
+                );
+            }
+
             bool success = i_paymentToken.transferFrom(
                 msg.sender,
                 s_feeAddress,
-                s_tokenFee * quantity
+                totalTokenFee
             );
             if (!success) revert NFTContract_TokenTransferFailed();
         }
 
         if (s_ethFee > 0) {
-            (bool success, ) = payable(s_feeAddress).call{value: msg.value}("");
+            uint256 totalEthFee = s_ethFee * quantity;
+            if (msg.value < totalEthFee) {
+                revert NFTContract_InsufficientEthFee(msg.value, totalEthFee);
+            }
+            (bool success, ) = payable(s_feeAddress).call{value: totalEthFee}(
+                ""
+            );
             if (!success) revert NFTContract_EthTransferFailed();
         }
-
-        _mint(msg.sender, quantity);
     }
 
     /// @notice Sets minting fee in terms of ERC20 tokens (only owner)
@@ -212,6 +238,12 @@ contract NFTContract is ERC721A, ERC2981, ERC721ABurnable, Ownable {
         _setBaseURI(baseURI);
     }
 
+    /// @notice Sets contract uri
+    /// @param _contractURI contract uri for contract metadata
+    function setContractURI(string memory _contractURI) external onlyOwner {
+        _setContractURI(_contractURI);
+    }
+
     /// @notice Sets royalty
     /// @param feeAddress address receiving royalties
     /// @param royaltyNumerator numerator to calculate fees (denominator is 10000)
@@ -269,6 +301,11 @@ contract NFTContract is ERC721A, ERC2981, ERC721ABurnable, Ownable {
         return _baseURI();
     }
 
+    /// @notice Gets contract uri
+    function getContractURI() external view returns (string memory) {
+        return s_contractURI;
+    }
+
     /// @notice Gets whether contract is paused
     function isPaused() external view returns (bool) {
         return s_paused;
@@ -308,6 +345,14 @@ contract NFTContract is ERC721A, ERC2981, ERC721ABurnable, Ownable {
         return 1;
     }
 
+    /// @notice Checks if token owner exists
+    /// @dev adapted code from openzeppelin ERC721URIStorage
+    /// @param tokenId tokenId of nft
+    function _setTokenURI(uint256 tokenId) private {
+        s_tokenURINumber[tokenId] = _randomTokenURI();
+        emit MetadataUpdated(tokenId);
+    }
+
     /// @notice Retrieves base uri
     function _baseURI() internal view override returns (string memory) {
         return s_baseURI;
@@ -317,13 +362,28 @@ contract NFTContract is ERC721A, ERC2981, ERC721ABurnable, Ownable {
     /// @param baseURI base uri for NFT metadata
     function _setBaseURI(string memory baseURI) private {
         s_baseURI = baseURI;
-        emit BaseURIUpdated(baseURI);
+        emit BaseURIUpdated(msg.sender, baseURI);
     }
 
     /// @notice Sets contract uri
     /// @param _contractURI contract uri for contract metadata
     function _setContractURI(string memory _contractURI) private {
         s_contractURI = _contractURI;
-        emit ContractURIUpdated(_contractURI);
+        emit ContractURIUpdated(msg.sender, _contractURI);
+    }
+
+    /// @notice generates a random tokenURI
+    function _randomTokenURI() private returns (uint256 randomTokenURI) {
+        uint256 numAvailableURIs = s_ids.length;
+        uint256 randIdx = block.prevrandao % numAvailableURIs;
+
+        // get new and nonexisting random id
+        randomTokenURI = (s_ids[randIdx] != 0) ? s_ids[randIdx] : randIdx;
+
+        // update helper array
+        s_ids[randIdx] = (s_ids[numAvailableURIs - 1] == 0)
+            ? numAvailableURIs - 1
+            : s_ids[numAvailableURIs - 1];
+        s_ids.pop();
     }
 }

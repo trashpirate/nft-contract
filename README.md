@@ -45,8 +45,10 @@ Smart contract inheriting from ERC721A with a native and ERC20 token fee for min
 ### Smart Contracts Testnet
 
 **Payment Token Contract**  
+https://sepolia.etherscan.io/address/0xf061681021dd0d840ed49ba88b57ae1430c8a962
 
-**NFT Contract**  
+**NFT Contract**
+
 
 ### Smart Contracts Mainnet
 

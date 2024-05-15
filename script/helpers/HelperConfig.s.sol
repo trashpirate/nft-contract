@@ -84,7 +84,7 @@ contract HelperConfig is Script {
                     tokenFee: TOKEN_FEE,
                     ethFee: ETH_FEE,
                     feeAddress: 0x7Bb8be3D9015682d7AC0Ea377dC0c92B0ba152eF,
-                    tokenAddress: 0xdcdF94053C9fCfe5BB7525c060B47Bbc6d166ce3,
+                    tokenAddress: 0xf061681021Dd0d840ed49bA88B57aE1430c8a962,
                     baseURI: BASE_URI,
                     contractURI: CONTRACT_URI,
                     maxSupply: MAX_SUPPLY,

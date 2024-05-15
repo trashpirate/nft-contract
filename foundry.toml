@@ -9,19 +9,6 @@ optimizer_rounds = 200
 fs_permissions = [{ access = "read", path = "./broadcast" }]
 gas_reports = ["NFTContract"]
 
-# --chains--
-[rpc_endpoints]
-mainnet = "${RPC_MAINNET}"
-bscmain = "${RPC_BSC}"
-bsctest = "${RPC_BSC_TEST}"
-
-localhost = "${RPC_LOCALHOST}"
-
-# --scans--
-[etherscan]
-bscmain = { key = "${BSCSCAN_KEY}", chain = "56" }
-bsctest = { key = "${BSCSCAN_KEY}", chain = "97" }
-
 
 [fuzz]
 runs = 100

@@ -30,7 +30,11 @@ contract TestUserFunctions is Test {
 
     // events
     event BatchLimitSet(address indexed sender, uint256 batchLimit);
-    event BaseURIUpdated(string indexed baseUri);
+    event BaseURIUpdated(address indexed sender, string indexed baseUri);
+    event ContractURIUpdated(
+        address indexed sender,
+        string indexed contractUri
+    );
     event RoyaltyUpdated(
         address indexed feeAddress,
         uint96 indexed royaltyNumerator
@@ -250,7 +254,7 @@ contract TestUserFunctions is Test {
     }
 
     /**
-     * SET ETH FEE
+     * SET TOKEN FEE
      */
     function test__SetTokenFee() public {
         address owner = nftContract.owner();
@@ -349,6 +353,80 @@ contract TestUserFunctions is Test {
 
         vm.prank(USER);
         nftContract.withdrawTokens(address(token), owner);
+    }
+
+    /**
+     * SET CONTRACT URI
+     */
+    function test__SetContractURI() public {
+        address owner = nftContract.owner();
+        string memory newContractURI = "new-contract-uri/";
+
+        vm.prank(owner);
+        nftContract.setContractURI(newContractURI);
+
+        assertEq(nftContract.getContractURI(), newContractURI);
+    }
+
+    function test__EmitEvent__SetContractURI() public {
+        address owner = nftContract.owner();
+        string memory newContractURI = "new-contract-uri/";
+
+        vm.expectEmit(true, true, true, true);
+        emit ContractURIUpdated(owner, newContractURI);
+
+        vm.prank(owner);
+        nftContract.setContractURI(newContractURI);
+    }
+
+    function test__RevertWhen__NotOwnerSetsContractURI() public {
+        string memory newContractURI = "new-contract-uri/";
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                Ownable.OwnableUnauthorizedAccount.selector,
+                USER
+            )
+        );
+
+        vm.prank(USER);
+        nftContract.setContractURI(newContractURI);
+    }
+
+    /**
+     * SET BASE URI
+     */
+    function test__SetBaseURI() public {
+        address owner = nftContract.owner();
+        string memory newBaseURI = "new-base-uri/";
+
+        vm.prank(owner);
+        nftContract.setBaseURI(newBaseURI);
+
+        assertEq(nftContract.getBaseURI(), newBaseURI);
+    }
+
+    function test__EmitEvent__SetBaseURI() public {
+        address owner = nftContract.owner();
+        string memory newBaseURI = "new-base-uri/";
+
+        vm.expectEmit(true, true, true, true);
+        emit BaseURIUpdated(owner, newBaseURI);
+
+        vm.prank(owner);
+        nftContract.setBaseURI(newBaseURI);
+    }
+
+    function test__RevertWhen__NotOwnerSetsBaseURI() public {
+        string memory newBaseURI = "new-base-uri/";
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                Ownable.OwnableUnauthorizedAccount.selector,
+                USER
+            )
+        );
+
+        vm.prank(USER);
+        nftContract.setBaseURI(newBaseURI);
     }
 
     /**
