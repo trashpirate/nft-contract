@@ -105,18 +105,22 @@ contract TestUserFunctions is Test {
     function test__Mint(
         uint256 quantity,
         address account
-    ) public unpaused noBatchLimit skipFork {
+    ) public unpaused skipFork {
         quantity = bound(quantity, 1, nftContract.getBatchLimit());
         vm.assume(account != address(0));
+        vm.assume(account != nftContract.owner());
 
         fund(account);
 
         uint256 feeEthBalance = nftContract.getFeeAddress().balance;
         uint256 feeTokenBalance = token.balanceOf(nftContract.getFeeAddress());
+
         uint256 ethBalance = account.balance;
         uint256 tokenBalance = token.balanceOf(account);
+
         uint256 tokenFee = quantity * nftContract.getTokenFee();
         uint256 ethFee = quantity * nftContract.getEthFee();
+        console.log(ethFee);
 
         vm.prank(account);
         nftContract.mint{value: ethFee}(quantity);
@@ -369,6 +373,27 @@ contract TestUserFunctions is Test {
             nftContract.tokenURI(1),
             string.concat(networkConfig.args.baseURI, "117")
         );
+    }
+
+    function test__batchTokenURI() public funded(USER) unpaused {
+        uint256 roll = 2;
+
+        address owner = nftContract.owner();
+        vm.prank(owner);
+        nftContract.setTokenFee(0);
+
+        for (uint256 index = 0; index < 4; index++) {
+            vm.prevrandao(bytes32(uint256(index + roll)));
+
+            uint256 quantity = 10;
+            uint256 ethFee = nftContract.getEthFee() * quantity;
+
+            nftContract.mint{value: ethFee}(quantity);
+        }
+
+        for (uint256 index = 0; index < nftContract.totalSupply(); index++) {
+            console.log(nftContract.tokenURI(index + 1));
+        }
     }
 
     /// forge-config: default.fuzz.runs = 3
