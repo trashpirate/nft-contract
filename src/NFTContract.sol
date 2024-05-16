@@ -3,6 +3,7 @@ pragma solidity ^0.8.20;
 
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
+import {Strings} from "@openzeppelin/contracts/utils/Strings.sol";
 import {ERC2981} from "@openzeppelin/contracts/token/common/ERC2981.sol";
 import {ERC721A, IERC721A} from "@erc721a/contracts/ERC721A.sol";
 import {ERC721ABurnable} from "@erc721a/contracts/extensions/ERC721ABurnable.sol";
@@ -47,6 +48,7 @@ contract NFTContract is ERC721A, ERC2981, ERC721ABurnable, Ownable {
 
     mapping(uint256 tokenId => uint256) private s_tokenURINumber;
     uint256[] private s_ids;
+    uint256 private s_nonce;
 
     /**
      * Events
@@ -320,6 +322,26 @@ contract NFTContract is ERC721A, ERC2981, ERC721ABurnable, Ownable {
         return s_contractURI;
     }
 
+    /// @notice retrieves tokenURI
+    /// @dev adapted from openzeppelin ERC721URIStorage contract
+    /// @param tokenId tokenID of NFT
+    function tokenURI(
+        uint256 tokenId
+    ) public view override(ERC721A, IERC721A) returns (string memory) {
+        _requireOwned(tokenId);
+
+        string memory _tokenURI = Strings.toString(s_tokenURINumber[tokenId]);
+
+        string memory base = _baseURI();
+
+        // If both are set, concatenate the baseURI and tokenURI (via string.concat).
+        if (bytes(_tokenURI).length > 0) {
+            return string.concat(base, _tokenURI);
+        }
+
+        return super.tokenURI(tokenId);
+    }
+
     /// @notice checks for supported interface
     /// @dev function override required by ERC721
     /// @param interfaceId interfaceId to be checked
@@ -334,6 +356,14 @@ contract NFTContract is ERC721A, ERC2981, ERC721ABurnable, Ownable {
     /**
      * Internal/Private Functions
      */
+
+    /// @notice Checks if token owner exists
+    /// @dev adapted code from openzeppelin ERC721
+    /// @param tokenId token id of NFT
+    function _requireOwned(uint256 tokenId) internal view {
+        ownerOf(tokenId);
+    }
+
     /// @notice sets first tokenId to 1
     function _startTokenId()
         internal
@@ -375,7 +405,9 @@ contract NFTContract is ERC721A, ERC2981, ERC721ABurnable, Ownable {
     /// @notice generates a random tokenURI
     function _randomTokenURI() private returns (uint256 randomTokenURI) {
         uint256 numAvailableURIs = s_ids.length;
-        uint256 randIdx = block.prevrandao % numAvailableURIs;
+        uint256 randIdx = uint256(
+            keccak256(abi.encodePacked(block.prevrandao, s_nonce))
+        ) % numAvailableURIs;
 
         // get new and nonexisting random id
         randomTokenURI = (s_ids[randIdx] != 0) ? s_ids[randIdx] : randIdx;
@@ -385,5 +417,9 @@ contract NFTContract is ERC721A, ERC2981, ERC721ABurnable, Ownable {
             ? numAvailableURIs - 1
             : s_ids[numAvailableURIs - 1];
         s_ids.pop();
+
+        unchecked {
+            s_nonce++;
+        }
     }
 }

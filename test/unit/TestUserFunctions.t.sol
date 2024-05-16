@@ -367,7 +367,7 @@ contract TestUserFunctions is Test {
         assertEq(nftContract.balanceOf(USER), 1);
         assertEq(
             nftContract.tokenURI(1),
-            string.concat(networkConfig.args.baseURI, "1")
+            string.concat(networkConfig.args.baseURI, "117")
         );
     }
 
